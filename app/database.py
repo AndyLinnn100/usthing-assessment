@@ -11,40 +11,66 @@ Three objects, three lifetimes:
 - ``Session``       one per unit of work. Tracks ORM objects, stages
                     changes, and flushes them as SQL inside a transaction.
 - ``get_db``        FastAPI glue: one Session per request, always closed.
+
+Single-user scaffolding: DEV_USER_ID + ensure_dev_user() exist so the app is
+complete for ONE user before auth lands. The auth milestone deletes both and
+substitutes get_current_user() — every query's scoping pattern stays the same.
 """
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Final
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base
+from app.models import Base, User
 
 # File-based SQLite: data survives restarts — that is the point of a DB.
 # TODO(auth milestone): move the URL into env-based config (pydantic-settings).
 DATABASE_URL = "sqlite:///./timetable.db"
 
-engine = create_engine(
-    DATABASE_URL,
-    # SQLite forbids using one connection across threads by default, but
-    # FastAPI dispatches sync handlers ("def", not "async def") to a
-    # threadpool — so any thread may pick up any pooled connection.
-    connect_args={"check_same_thread": False},
-)
+# --- Single-user boundary (deleted at the auth milestone) -------------------
+
+DEV_USER_ID: Final = 1
 
 
-@event.listens_for(engine, "connect")
-def _enforce_foreign_keys(dbapi_conn: Any, _record: Any) -> None:
+def ensure_dev_user() -> None:
+    """Create the single dev user if missing (single-user scaffolding)."""
+    with SessionLocal() as db:
+        if db.get(User, DEV_USER_ID) is None:
+            db.add(User(id=DEV_USER_ID, username="dev", password_hash="placeholder"))
+            db.commit()
+
+
+# --- Engine -----------------------------------------------------------------
+
+
+def _attach_fk_pragma(eng: Engine) -> None:
     """SQLite does NOT enforce FK constraints unless asked, per connection.
 
     Proven in the models smoke test: without this pragma, orphan events are
     accepted silently. This hook runs on every new pooled connection.
     """
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
 
+    @event.listens_for(eng, "connect")
+    def _enforce_foreign_keys(dbapi_conn: Any, _record: Any) -> None:
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
+def make_engine(url: str) -> Engine:
+    """Engine factory — shared by the app and by test fixtures (isolation).
+
+    check_same_thread=False: SQLite forbids sharing a connection across
+    threads by default, but FastAPI dispatches sync handlers to a threadpool.
+    """
+    eng = create_engine(url, connect_args={"check_same_thread": False})
+    _attach_fk_pragma(eng)
+    return eng
+
+
+engine = make_engine(DATABASE_URL)
 
 # expire_on_commit=False: after commit(), objects keep their loaded attribute
 # values instead of being marked stale. We serialize responses AFTER
