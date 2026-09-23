@@ -29,3 +29,8 @@ line-length = 100
 [tool.ruff.lint]
 # E/F: pyflakes+pycodestyle errors, I: import sorting
 select = ["E", "F", "I"]
+
+[tool.pyright]
+# Pin analysis to the project venv so type checking matches runtime.
+venvPath = "."
+venv = ".venv"
