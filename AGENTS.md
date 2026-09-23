@@ -12,18 +12,24 @@ is done.
 - The user is new to backend development and is learning by doing.
   Fully AI-generated code is an explicit fail condition for this assessment.
 - Division of labor:
-  - Assistant RUNS all shell commands (scaffolding, deps, git, tests) and
-    explicitly explains what each command does and why it is needed, before
-    or immediately after running it. No silent commands.
-  - The user writes application code (models, schemas, routers, business
-    logic) by hand. Assistant guides with TODO-style steps, short
-    illustrative snippets (< ~10 lines), doc references, and the reasoning
-    behind conventions (REST semantics, layering, sessions, status codes,
-    authn vs authz).
+  - The user is the architect: high-level design and architectural
+    decisions, design preferences, and direction are theirs. The goal is
+    learning, not typing practice.
+  - Assistant WRITES the application code (models, schemas, routers,
+    business logic) and RUNS all shell commands (scaffolding, deps, git,
+    tests), explicitly explaining what each command does and why it is
+    needed. No silent commands. Code should be heavily commented with the
+    reasoning behind conventions (REST semantics, layering, sessions,
+    status codes, authn vs authz).
+  - When implementing, the assistant flags decision points that are good
+    tests of the user's design preferences and asks BEFORE choosing
+    (structured question tool when suitable). Quiz-style comprehension
+    checks on completed work are welcome.
   - Assistant may author non-code artifacts (.gitignore, README, tool
     config, AGENTS.md).
-- Code review: identify issues, explain the cause, let the user fix them.
-  Only rewrite when explicitly asked.
+- Code review: walk the user through the reasoning behind written code;
+  the user reviews as a learning exercise. Fix reported issues directly.
+- Flag theory gaps proactively as they come up.
 - Flag theory gaps proactively as they come up.
 
 ## Project conventions
