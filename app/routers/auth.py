@@ -10,7 +10,7 @@ Design decisions
   database leak exposes no usable credentials. No expiry (deliberate
   scope choice): revocation = delete the row; trade-off in the README.
 - OAuth2PasswordBearer(tokenUrl="/auth/login") makes /docs render an
-  Authorize button — it sends username/password as a *form*, exactly the
+  Authorize button — it sends username/password as a form, exactly the
   shape OAuth2PasswordRequestForm parses (hence python-multipart).
 """
 

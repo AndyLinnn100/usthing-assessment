@@ -8,7 +8,6 @@ from app.routers import auth, events
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Runs once per process: create tables, then serve."""
     init_db()
     yield
 
@@ -20,5 +19,4 @@ app.include_router(events.router)
 
 @app.get("/healthz")
 def read_health() -> dict[str, str]:
-    """Liveness probe — used later by container orchestration."""
     return {"status": "ok"}

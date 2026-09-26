@@ -48,8 +48,8 @@ class EventCreate(BaseModel):
 class EventUpdate(BaseModel):
     """Payload for ``PATCH /events/{event_id}``; absent fields stay unchanged.
 
-    Note: the end-after-start invariant cannot be enforced here — when only
-    one bound is patched, validity depends on the *stored* value. The router
+    Note: the end-after-start invariant cannot be enforced here, when only
+    one bound is patched, validity depends on the stored value. The router
     must re-check it against the database row.
     """
 
@@ -70,7 +70,7 @@ class EventUpdate(BaseModel):
 
 
 class EventRead(BaseModel):
-    """Representation returned by the API."""
+    """Representation returned by the API"""
 
     model_config = ConfigDict(from_attributes=True)
 

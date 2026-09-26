@@ -1,15 +1,5 @@
 """Minimal hand-rolled iCalendar (RFC 5545) serializer.
 
-Scope decisions (documented in README):
-- Datetimes export as UTC ("...Z"): correct instants, simple format.
-  Full TZID/VTIMEZONE support is explicitly out of scope.
-- ``color`` exports as ``X-COLOR`` — the X- prefix is reserved for
-  experimental properties (RFC 5545 §3.8.8.2), so this is legal.
-- Content lines fold at 72 characters with a single-space continuation
-  prefix (RFC 5545 §3.1). We fold on characters — never mid-character —
-  so UTF-8 stays intact; the 75-OCTET limit is met conservatively for
-  ASCII and approximated for multibyte text.
-
 Pure functions with no HTTP/SQL knowledge: the router fetches owned
 events, this module turns them into text. That split keeps both testable
 alone (see tests/test_ics.py).
@@ -21,8 +11,6 @@ from app.models import Event
 
 PRODID = "-//USThing Timetable Service//EN"
 
-# RFC 5545 §3.1: content lines SHOULD be wrapped at 75 octets; we fold
-# earlier (72 chars) to stay conservative.
 _FOLD_AT = 72
 
 
@@ -71,7 +59,6 @@ def _vevent_lines(ev: Event, dtstamp: datetime) -> list[str]:
 
 
 def build_calendar(events: list[Event], now: datetime) -> str:
-    """Render owned events as a complete VCALENDAR document (CRLF lines)."""
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

@@ -1,9 +1,9 @@
 """SQLAlchemy ORM models — the domain layer.
 
-Single source of truth for what data exists and which rules the *database
-itself* enforces (uniqueness, referential integrity, NOT NULL). Pydantic
+Single source of truth for what data exists and which rules the database
+itself enforces (uniqueness, referential integrity, NOT NULL). Pydantic
 schemas in schemas.py are API-facing projections of these tables — kept
-deliberately separate (see that file's docstring).
+deliberately separate
 
 Design notes
 ------------
@@ -43,11 +43,8 @@ def _utcnow() -> datetime:
 
 
 class ISODatetime(TypeDecorator):
-    """Timezone-aware datetime persisted as exact ISO 8601 text.
+    """Timezone-aware datetime persisted as ISO 8601
 
-    ``impl`` is what the column becomes in the database (a short string);
-    the two ``process_*`` hooks convert at the storage boundary so Python
-    code always handles real ``datetime`` objects.
     """
 
     impl = String(64)  # "2026-09-26T09:00:00.123456+08:00" = 35 chars max
@@ -120,9 +117,8 @@ class AuthToken(Base):
 
     Design decisions:
     - Stored as sha256 hash — a database leak exposes no usable
-      credentials. sha256 (fast) is fine because the raw token has 256
-      bits of entropy: brute-forcing the hash space is infeasible.
-    - No expiry (deliberate scope choice): revocation = delete the row.
+      credentials
+    - No expiry (scope choice): revocation = delete the row.
     """
 
     __tablename__ = "auth_tokens"

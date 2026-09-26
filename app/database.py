@@ -1,9 +1,9 @@
 """Database plumbing: engine, session factory, request-scoped dependency.
 
 Responsibility split (the layering you should internalize):
-- ``models.py``    defines WHAT exists — tables, columns, constraints.
-- ``database.py``  defines HOW we reach it — engine, pool, sessions.
-- neither file knows anything about HTTP; that lives in the routers.
+- ``models.py``    defines WHAT exists: tables, columns, constraints.
+- ``database.py``  defines HOW we reach it: engine, pool, sessions.
+- neither file knows anything about HTTP, that lives in the routers.
 
 Three objects, three lifetimes:
 - ``engine``        ONE per process. Owns the connection pool and the
@@ -22,14 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Base
 
-# File-based SQLite: data survives restarts — that is the point of a DB.
-# Overridable via environment (12-factor): containers and test harnesses
-# pin an ABSOLUTE path so the DB location never depends on the process's
-# working directory. Full pydantic-settings was deliberately declined
-# (single knob, not a graded requirement); revisit if config grows.
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./timetable.db")
-
-# --- Engine -----------------------------------------------------------------
 
 
 def _attach_fk_pragma(eng: Engine) -> None:
