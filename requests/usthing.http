@@ -1,0 +1,122 @@
+### USThing Timetable Service — request tour (.http edition)
+###
+### Works with the VS Code "REST Client" extension or the JetBrains HTTP
+### client: click "Send Request" above each ### block, top to bottom.
+### The login blocks capture tokens into {{token_a}} / {{token_b}} so the
+### authenticated blocks below just work.
+
+@base = http://localhost:8001
+
+### 0 · Health
+GET {{base}}/healthz
+
+### 1 · Register alice (201 first run; 409 afterwards is fine)
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{"username": "alice", "password": "alice-pass-1"}
+
+### 2 · Register bob
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{"username": "bob", "password": "bob-pass-123"}
+
+### 3 · Login alice -> captures {{token_a}}
+POST {{base}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&password=alice-pass-1
+
+> {%
+    client.global.set("token_a", response.body.access_token);
+%}
+
+### 4 · Login bob -> captures {{token_b}}
+POST {{base}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=bob&password=bob-pass-123
+
+> {%
+    client.global.set("token_b", response.body.access_token);
+%}
+
+### 5 · Wrong password — uniform 401 (same body as unknown user)
+POST {{base}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&password=nope-nope
+
+### 6 · No token at all -> 401
+GET {{base}}/events
+
+### 7 · Create event (alice) — full payload
+POST {{base}}/events
+Authorization: Bearer {{token_a}}
+Content-Type: application/json
+
+{
+  "title": "COMP 1021 Lecture",
+  "description": "LT-B",
+  "location": "Rm 2405",
+  "color": "#1e90ff",
+  "start_time": "2026-09-26T09:00:00+08:00",
+  "end_time": "2026-09-26T10:30:00+08:00"
+}
+
+### 8 · Validation: naive datetime -> 422
+POST {{base}}/events
+Authorization: Bearer {{token_a}}
+Content-Type: application/json
+
+{"title": "naive", "start_time": "2026-09-26T09:00:00", "end_time": "2026-09-26T10:00:00+08:00"}
+
+### 9 · List (alice) — chronological; copy an id for blocks 10-14
+GET {{base}}/events
+Authorization: Bearer {{token_a}}
+
+### 10 · Read one (replace the 1 with your id)
+GET {{base}}/events/1
+Authorization: Bearer {{token_a}}
+
+### 11 · Missing row -> 404
+GET {{base}}/events/99999
+Authorization: Bearer {{token_a}}
+
+### 12 · PATCH partial — only the title changes
+PATCH {{base}}/events/1
+Authorization: Bearer {{token_a}}
+Content-Type: application/json
+
+{"title": "Renamed Lecture"}
+
+### 13 · PATCH explicit null — clears the description
+PATCH {{base}}/events/1
+Authorization: Bearer {{token_a}}
+Content-Type: application/json
+
+{"description": null}
+
+### 14 · PATCH end_time before the STORED start_time -> 422 (handler rule)
+PATCH {{base}}/events/1
+Authorization: Bearer {{token_a}}
+Content-Type: application/json
+
+{"end_time": "2026-09-26T08:00:00+08:00"}
+
+### 15 · DELETE -> 204, empty body
+DELETE {{base}}/events/1
+Authorization: Bearer {{token_a}}
+
+### 16 · Isolation: bob reading alice's (deleted) event -> 404
+GET {{base}}/events/1
+Authorization: Bearer {{token_b}}
+
+### 17 · Export alice's calendar (raw VCALENDAR in the response pane)
+GET {{base}}/events/export.ics
+Authorization: Bearer {{token_a}}
+
+### 18 · Bob's export — contains no VEVENT of alice's
+GET {{base}}/events/export.ics
+Authorization: Bearer {{token_b}}
