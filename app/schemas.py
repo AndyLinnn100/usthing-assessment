@@ -95,7 +95,9 @@ class UserCreate(BaseModel):
     """Registration payload. The password is write-only: never echoed back."""
 
     username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_-]+$")
-    password: str = Field(min_length=8, max_length=128)
+    # 72 max: bcrypt only considers the first 72 BYTES — refuse longer
+    # secrets at the border rather than silently truncating them.
+    password: str = Field(min_length=8, max_length=72)
 
 
 class UserRead(BaseModel):

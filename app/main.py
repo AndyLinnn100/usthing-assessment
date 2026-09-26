@@ -2,19 +2,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.database import ensure_dev_user, init_db
-from app.routers import events
+from app.database import init_db
+from app.routers import auth, events
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Runs once per process: schema + single-user bootstrap, then serve."""
+    """Runs once per process: create tables, then serve."""
     init_db()
-    ensure_dev_user()  # single-user scaffolding; removed at the auth milestone
     yield
 
 
 app = FastAPI(title="USThing Timetable Service", version="0.1.0", lifespan=lifespan)
+app.include_router(auth.router)
 app.include_router(events.router)
 
 

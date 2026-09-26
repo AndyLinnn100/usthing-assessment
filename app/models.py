@@ -81,6 +81,11 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    tokens: Mapped[list["AuthToken"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username!r}>"
@@ -108,3 +113,26 @@ class Event(Base):
 
     def __repr__(self) -> str:
         return f"<Event id={self.id} title={self.title!r} start={self.start_time}>"
+
+
+class AuthToken(Base):
+    """A bearer token: the raw value lives only with the client.
+
+    Design decisions:
+    - Stored as sha256 hash — a database leak exposes no usable
+      credentials. sha256 (fast) is fine because the raw token has 256
+      bits of entropy: brute-forcing the hash space is infeasible.
+    - No expiry (deliberate scope choice): revocation = delete the row.
+    """
+
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(ISODatetime, default=_utcnow)
+
+    owner: Mapped["User"] = relationship(back_populates="tokens")
+
+    def __repr__(self) -> str:
+        return f"<AuthToken id={self.id} user_id={self.user_id}>"

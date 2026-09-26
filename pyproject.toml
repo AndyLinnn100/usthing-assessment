@@ -5,8 +5,10 @@ description = "Customizable timetable service — USThing Backend Technical Test
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.141.1",
     "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
     "sqlalchemy>=2.0.54",
     "uvicorn[standard]>=0.53.0",
 ]

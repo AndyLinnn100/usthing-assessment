@@ -11,36 +11,19 @@ Three objects, three lifetimes:
 - ``Session``       one per unit of work. Tracks ORM objects, stages
                     changes, and flushes them as SQL inside a transaction.
 - ``get_db``        FastAPI glue: one Session per request, always closed.
-
-Single-user scaffolding: DEV_USER_ID + ensure_dev_user() exist so the app is
-complete for ONE user before auth lands. The auth milestone deletes both and
-substitutes get_current_user() — every query's scoping pattern stays the same.
 """
 
 from collections.abc import Iterator
-from typing import Any, Final
+from typing import Any
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base, User
+from app.models import Base
 
 # File-based SQLite: data survives restarts — that is the point of a DB.
 # TODO(auth milestone): move the URL into env-based config (pydantic-settings).
 DATABASE_URL = "sqlite:///./timetable.db"
-
-# --- Single-user boundary (deleted at the auth milestone) -------------------
-
-DEV_USER_ID: Final = 1
-
-
-def ensure_dev_user() -> None:
-    """Create the single dev user if missing (single-user scaffolding)."""
-    with SessionLocal() as db:
-        if db.get(User, DEV_USER_ID) is None:
-            db.add(User(id=DEV_USER_ID, username="dev", password_hash="placeholder"))
-            db.commit()
-
 
 # --- Engine -----------------------------------------------------------------
 
