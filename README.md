@@ -29,56 +29,39 @@ authorization.
 
 ```mermaid
 flowchart TB
-    C["Client<br/>(browser / curl / calendar app)"]
+    C(["Client"]) -->|"HTTP + bearer token"| APP["FastAPI app — main.py<br/>(assembly + lifespan)"]
 
-    subgraph entry["Entry & assembly — app/main.py"]
-        UV["uvicorn server<br/>(Docker: 0.0.0.0:8000)"]
-        LF["lifespan → init_db()<br/>(create tables once)"]
-        APP["FastAPI app<br/>include_router(auth, events)"]
+    subgraph http["HTTP layer — app/routers/"]
+        AUTH["auth.py — who are you?"]
+        EVENTS["events.py — what may you touch?<br/>(CRUD + .ics export)"]
     end
 
-    subgraph border["API border — app/schemas.py"]
-        SC["Pydantic models: EventCreate / EventUpdate / EventRead,<br/>UserCreate / UserRead, Token<br/>validators: tz-aware datetimes, field limits, end after start"]
+    SCHEMAS["schemas.py — API border<br/>validate in / shape out"]
+    ICS["ics.py — calendar rendering"]
+
+    subgraph data["Data layer"]
+        DBP["database.py — engine & one<br/>session per request"]
+        MODELS["models.py — domain tables<br/>(User / Event / AuthToken)"]
+        DB[("SQLite — timetable.db")]
     end
 
-    subgraph routers["HTTP layer — app/routers/"]
-        AUTH["auth.py — authentication<br/>register (bcrypt, 409 on duplicates)<br/>login (mint bearer token)<br/>get_current_user (401 gate)"]
-        EV["events.py — CRUD + /events/export.ics<br/>_owned_event: WHERE user_id = current_user.id"]
-    end
-
-    subgraph pure["Pure serializer — app/ics.py"]
-        ICS["build_calendar(events)<br/>RFC 5545: escaping, folding, UTC"]
-    end
-
-    subgraph domain["Domain layer — app/models.py"]
-        MOD["User / Event / AuthToken<br/>ISODatetime (exact ISO 8601 text),<br/>FK + ON DELETE CASCADE, unique + indexed columns"]
-    end
-
-    subgraph plumbing["Data plumbing — app/database.py"]
-        GETDB["get_db(): one Session per request"]
-        ENG["engine + connection pool<br/>PRAGMA foreign_keys = ON<br/>DATABASE_URL from env"]
-    end
-
-    DB[("SQLite — timetable.db<br/>(/data volume under Docker)")]
-
-    C -->|"HTTP + Authorization: Bearer …"| UV
-    UV --> APP
-    LF -.->|"CREATE TABLE IF NOT EXISTS"| DB
     APP --> AUTH
-    APP --> EV
-    AUTH -->|"401 / Token"| C
-    EV -->|"authenticate"| AUTH
-    EV <-->|"validate request / shape response"| SC
-    AUTH <-->|"UserCreate / Token"| SC
-    EV --> ICS
-    ICS -->|"text/calendar attachment"| C
-    EV --> GETDB
-    AUTH --> GETDB
-    GETDB --> ENG
-    ENG --> DB
-    MOD -.->|"object ⇄ row mapping"| DB
-    ENG -.->|"table definitions"| MOD
+    APP --> EVENTS
+    AUTH <--> SCHEMAS
+    EVENTS <--> SCHEMAS
+    EVENTS --> ICS
+    AUTH --> DBP
+    EVENTS --> DBP
+    DBP --> MODELS
+    MODELS --> DB
 ```
+
+The same shape in words: a request enters through the assembled FastAPI app,
+gets **authenticated** (`auth.py` resolves the bearer token to a user), gets
+its payload **validated at the border** (`schemas.py`), and reaches the
+domain only through a request-scoped session that talks to SQLite via the
+ORM models. The `.ics` export is a pure serializer over already-authorized
+data. No layer reaches upward.
 
 Layer responsibilities at a glance:
 
