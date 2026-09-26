@@ -17,11 +17,14 @@ Design notes
   would produce the distinct URL ``/events/`` — FastAPI does not merge them.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.ics import build_calendar
 from app.models import Event, User
 from app.routers.auth import get_current_user
 from app.schemas import EventCreate, EventRead, EventUpdate
@@ -56,6 +59,30 @@ def list_events(
     one offset — safe because the query is user-scoped (see models.py)."""
     stmt = select(Event).where(Event.user_id == current_user.id).order_by(Event.start_time)
     return list(db.scalars(stmt))
+
+
+@router.get("/export.ics")
+def export_ics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Own events as an iCalendar file.
+
+    Declared BEFORE the /{event_id} routes: Starlette matches in
+    registration order. (The int converter would reject "export.ics"
+    anyway — explicit ordering is cheap insurance + documents intent.)
+
+    Bearer-only auth (design decision): calendar clients that cannot send
+    headers are a documented limitation; a ?token= query param would leak
+    into logs and browser history.
+    """
+    stmt = select(Event).where(Event.user_id == current_user.id).order_by(Event.start_time)
+    ics = build_calendar(list(db.scalars(stmt)), now=datetime.now(timezone.utc))
+    return Response(
+        content=ics,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="timetable.ics"'},
+    )
 
 
 @router.get("/{event_id}", response_model=EventRead)
