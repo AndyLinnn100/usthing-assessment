@@ -84,10 +84,42 @@ Lifecycle of one authenticated write (`POST /events`):
 4. the ORM object is serialized through `EventRead` (`from_attributes`) —
    only schema-declared fields leave the service
 
-## Running (dev)
+## Running
+
+### Local (development)
 
 ```sh
 uv run uvicorn app.main:app --reload
 ```
 
 Interactive API docs: http://localhost:8000/docs
+
+### Docker
+
+```sh
+docker build -t usthing-timetable .
+docker run -d --name usthing -p 8000:8000 -v usthing-data:/data usthing-timetable
+```
+
+That's the whole quickstart — the image carries its own Python and exactly
+the dependencies pinned in `uv.lock`, so Docker is the only requirement.
+
+- **Persistence:** `/data` is a named volume; the image sets
+  `DATABASE_URL=sqlite:////data/timetable.db`, so users and events survive
+  container restarts and replacements. (Adjust the *host* port in `-p` if
+  8000 is taken on your machine.)
+- **Health:** the image ships a `HEALTHCHECK` probing `/healthz` — watch it
+  turn healthy in `docker ps`.
+- **Explore:** open http://localhost:8000/docs, register a user, click
+  **Authorize**, and the entire surface is interactive.
+- **Manual sweep:** run the guided request tour against the container:
+
+```sh
+BASE_URL=http://localhost:8000 ./requests/tour.sh all
+```
+
+To relocate the database, override the env var:
+
+```sh
+docker run -e DATABASE_URL=sqlite:////some/path.db -p 8000:8000 usthing-timetable
+```
