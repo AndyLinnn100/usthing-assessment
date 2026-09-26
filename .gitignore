@@ -18,3 +18,7 @@ dist/
 # Local database files (runtime artifacts)
 *.db
 *.sqlite3
+
+# Manual-testing artifacts (tour.sh exports, ad-hoc server logs)
+*.ics
+*.log
